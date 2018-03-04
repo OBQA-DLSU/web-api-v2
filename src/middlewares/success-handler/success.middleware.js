@@ -7,7 +7,10 @@ function handleSuccess (req, res, next) {
   } else {
     message = req.message;
   }
-  console.log(chalk.green('Success: ' + 200), message);
+  if (!req.data) {
+    return res.status(400).send({status: 0, message: 'Error'});
+  }
+  console.log(chalk.green('STATUS: ' + 200), message);
   res.status(200).send({status: 1, message: message, data: req.data});
 }
 
