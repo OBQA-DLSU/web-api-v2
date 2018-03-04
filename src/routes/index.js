@@ -1,9 +1,11 @@
 const authenticationRouter = require('./authentication.route');
+const invitationRouter = require('./invitation.route');
 
 module.exports = (app) => {
+  app.get('*', unknownUrl);
   app.get('/', welcomePage);
   app.use('/api/auth', authenticationRouter);
-  app.get('*', unknownUrl);
+  app.use('/api/invitation', invitationRouter);
 };
 
 function welcomePage (req, res, next) {

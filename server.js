@@ -9,6 +9,7 @@ const morgan = require('morgan');
 const cors = require('cors');
 const ErrorMiddleware = require('./src/middlewares/error-handler/error.middleware');
 const SuccessMiddleware = require('./src/middlewares/success-handler/success.middleware');
+const chalk = require('chalk');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded());
@@ -22,12 +23,13 @@ app.use(function(req, res, next) {
 });
 
 apiRoutes(app);
+app.use(ErrorMiddleware.boomError);
 app.use(ErrorMiddleware.handleError);
 app.use(SuccessMiddleware.handleSuccess);
 Db.sequelize.sync()
 .then(() => {
   app.listen(PORT, () => {
-    console.log(`Listening on PORT ${PORT}`);
+    console.log(chalk.blue(`Listening on PORT: ${PORT}`));
   });
 })
 .catch(function (err) {
