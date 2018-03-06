@@ -23,7 +23,7 @@ const invitation = async (req, res, next) => {
     next();
   }
   catch (e) {
-    ErrorHelper.serverError(e);
+    next(ErrorHelper.serverError(e));
   }
 }
 

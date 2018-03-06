@@ -10,6 +10,7 @@ const cors = require('cors');
 const ErrorMiddleware = require('./src/middlewares/error-handler/error.middleware');
 const SuccessMiddleware = require('./src/middlewares/success-handler/success.middleware');
 const chalk = require('chalk');
+const TokenMiddleware = require('./src/middlewares/token/token.middleware');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded());
@@ -21,6 +22,7 @@ app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   next();
 });
+app.use(TokenMiddleware.tokenTrimmer);
 
 apiRoutes(app);
 app.use(ErrorMiddleware.boomError);

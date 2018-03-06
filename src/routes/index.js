@@ -1,11 +1,13 @@
 const authenticationRouter = require('./authentication.route');
 const invitationRouter = require('./invitation.route');
+const sopiRouter = require('./sopi.route');
 
 module.exports = (app) => {
-  app.get('*', unknownUrl);
   app.get('/', welcomePage);
   app.use('/api/auth', authenticationRouter);
   app.use('/api/invitation', invitationRouter);
+  app.use('/api/sopi', sopiRouter);
+  // app.get('*', unknownUrl);
 };
 
 function welcomePage (req, res, next) {
@@ -14,6 +16,7 @@ function welcomePage (req, res, next) {
 
 function unknownUrl (req, res, next) {
   let err = new Error('Invalid URL');
+  err.error = 'URL ERROR';
   err.statusCode = 404;
   next(err);
 }
