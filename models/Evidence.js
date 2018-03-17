@@ -1,6 +1,8 @@
 module.exports = (sequelize, DataTypes) => {
   const Evidence = sequelize.define('Evidence', {
     name: { type: DataTypes.STRING, allowNull: true },
+    publicId: { type: DataTypes.STRING, allowNull: false },
+    eTag: { type: DataTypes.STRING },
     url: { type: DataTypes.STRING },
     securedUrl: { type: DataTypes.STRING },
     mimeType: { type: DataTypes.STRING },

@@ -2,6 +2,7 @@ const chalk = require('chalk');
 
 function handleError (err, req, res, next) {
   if (!err) {
+    console.log('not err');
     next();
   }
   if (!err.statusCode) {

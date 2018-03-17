@@ -31,6 +31,11 @@ CourseRouter.route('/programCourse/:id')
   ExpressJoi(CourseValidation.updateSchema),
   Course.updateProgramCourse
 )
+.patch(
+  /* RequireAuth, */
+  ExpressJoi(CourseValidation.updateToBeAssessedSchema),
+  Course.updateToBeAssessed
+)
 .delete(
   /* RequireAuth, */
   Course.deleteProgramCourse

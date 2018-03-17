@@ -77,14 +77,14 @@ function getProgramCourseById (id, flat = false) {
   });
 }
 
-function createProgramCourse (programCourseData) {
+function createProgramCourse (programCourseData, flat = false) {
   return new Promise(async(resolve, reject) => {
     try {
       const programCourse = await Db.ProgramCourse.create(programCourseData);
       if (!programCourse) {
         return resolve({err: 'Invalid Program Course Data'});
       }
-      const getPGD = await getProgramCourseById(programCourse.id);
+      const getPGD = await getProgramCourseById(programCourse.id, flat);
       resolve({err: null, programCourse: getPGD.programCourse});
     }
     catch (e) {
@@ -93,7 +93,7 @@ function createProgramCourse (programCourseData) {
   });
 }
 
-function updateProgramCourse (id, programCourseData) {
+function updateProgramCourse (id, programCourseData, flat = false) {
   return new Promise(async(resolve, reject) => {
     try {
       const updateProgramCourse = await Db.ProgramCourse.update(programCourseData, {
@@ -102,7 +102,7 @@ function updateProgramCourse (id, programCourseData) {
       if (!updateProgramCourse[1][0]) {
         return resolve({err: 'Invalid ProgramCourse ID'});
       }
-      const getProgramCourse = await getProgramCourseById(updateProgramCourse[1][0].id);
+      const getProgramCourse = await getProgramCourseById(updateProgramCourse[1][0].id, flat);
       resolve({err: null, programCourse: getProgramCourse.programCourse});
     }
     catch (e) {
@@ -128,25 +128,62 @@ function deleteProgramCourse (id) {
   });
 }
 
-function createProgramCourseFromInput ({code, ProgramId, description}) {
+function createProgramCourseFromInput ({code, name, ProgramId, toBeAssessed, description}, flat = false) {
   return new Promise(async(resolve, reject) => {
     try {
       let courseData, programCourseData;
-      const findCourse = await CourseHelper.getCourseByQueryObject({code: code});
+      const findCourse = await CourseHelper.getOneCourseByQueryObject({code: code});
       if (findCourse.err) { return resolve({err: findCourse.err}); }
       if (findCourse.course) {
         courseData = findCourse.course;
       } else {
-        const createCourse = await CourseHelper.createCourse({code: code});
+        const createCourse = await CourseHelper.createCourse({code: code, name: name});
         if (createCourse.err) { return resolve({err: createCourse.err}); }
         courseData = createCourse.course;
       }
-      const findProgramCourse = await getOneProgramCourseByQueryObject({CourseId: courseData.id});
+      const findProgramCourse = await getOneProgramCourseByQueryObject({CourseId: courseData.id, ProgramId: ProgramId}, flat);
       if (findProgramCourse.err) { return resolve({err: findProgramCourse.err}); }
       if (findProgramCourse.programCourse) {
         programCourseData = findProgramCourse.programCourse;
       } else {
-        const createProgramCourse = await createProgramCourse({ProgramId: ProgramId, CourseId: courseData.id, description: description});
+        const createPC = await createProgramCourse({ProgramId: ProgramId, CourseId: courseData.id, description: description, toBeAssessed: toBeAssessed}, flat);
+        if (createPC.err) { return resolve({err: createPC.err }); }
+        programCourseData = createPC.programCourse;
+      }
+      if (!programCourseData) { return resolve({err: 'Invalid Input'}); }
+      resolve({err: null, programCourse: programCourseData});
+    }
+    catch (e) {
+      reject(e);
+    }
+  });
+}
+
+function updateProgramCourseFromInput (id, {code, name, ProgramId, toBeAssessed, description}, flat = false) {
+  return new Promise(async(resolve, reject) => {
+    try {
+      let courseData, programCourseData;
+      const findCourse = await CourseHelper.getOneCourseByQueryObject({code: code});
+      if (findCourse.err) { return resolve({err: findCourse.err}); }
+      if (findCourse.course) {
+        const updateC = await CourseHelper.updateCourse(findCourse.course.id, {name: name});
+        if (updateC.err) { return resolve({err: updateC.err}); }
+        courseData = updateC.course;
+      } else {
+        const createCourse = await CourseHelper.createCourse({code: code, name: name});
+        if (createCourse.err) { return resolve({err: createCourse.err}); }
+        courseData = createCourse.course;
+      }
+      const findProgramCourse = await getOneProgramCourseByQueryObject({id: id});
+      if (findProgramCourse.err) { return resolve({err: findProgramCourse.err}); }
+      if (findProgramCourse.programCourse) {
+        // update here
+        const pcObject = { CourseId: courseData.id, description: description, toBeAssessed: toBeAssessed };
+        const updatePC = await updateProgramCourse(id, pcObject, flat);
+        if (updatePC.err) { return resolve({err: updateProgramCourse.err}); }
+        programCourseData = updatePC.programCourse;
+      } else {
+        const createProgramCourse = await createProgramCourse({ProgramId: ProgramId, CourseId: courseData.id, description: description, toBeAssessed: toBeAssessed}, flat);
         if (createProgramCourse.err) { return resolve({err: createProgramCourse.err }); }
         programCourseData = createProgramCourse.programCourse;
       }
@@ -158,17 +195,36 @@ function createProgramCourseFromInput ({code, ProgramId, description}) {
   });
 }
 
-function createProgramCourseFromDataArray (dataArray, ProgramId) {
+function createProgramCourseFromDataArray (dataArray, ProgramId, flat = false) {
   return new Promise(async(resolve, reject) => {
     try {
       let success = [], error = [];
       const processData = await Promise.all(dataArray.map(async(d) => {
-        const data = {code: d.course, ProgramId: ProgramId, description: d.description};
-        const createPC = await createProgramCourseFromInput(data);
-        if (createPC.err) { return error.push(createPC.err); }
-        success.push(createPC.programCourse);
+        try {
+          const data = {code: d.code, ProgramId: ProgramId, description: d.description, name: d.name};
+          const createPC = await createProgramCourseFromInput(data, flat);
+          if (createPC.err) { return error.push(createPC.err); }
+          success.push(createPC.programCourse);
+        }
+        catch (e) {
+          error.push(e);
+        }
       }));
       resolve({error, success});
+    }
+    catch (e) {
+      reject(e);
+    }
+  });
+}
+
+function updateToBeAssessed (id, toBeAssessed = true, flat = false) {
+  return new Promise(async(resolve, reject) => {
+    try {
+      const updatePC = await updateProgramCourse(id, {toBeAssessed: toBeAssessed}, flat);
+      if (updatePC.err) { return resolve({err: updatePC.err}); }
+      if (!updatePC.programCourse) { return resolve({err: 'Invalid ID'}); }
+      resolve({err: null, programCourse: updatePC.programCourse});
     }
     catch (e) {
       reject(e);
@@ -185,5 +241,7 @@ module.exports = {
   updateProgramCourse: updateProgramCourse,
   deleteProgramCourse: deleteProgramCourse,
   createProgramCourseFromInput: createProgramCourseFromInput,
-  createProgramCourseFromDataArray: createProgramCourseFromDataArray
+  createProgramCourseFromDataArray: createProgramCourseFromDataArray,
+  updateProgramCourseFromInput: updateProgramCourseFromInput,
+  updateToBeAssessed: updateToBeAssessed
 };

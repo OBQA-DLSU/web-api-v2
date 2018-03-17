@@ -7,7 +7,7 @@ function getCourse (flat = false) {
         where: {},
         raw: flat
       });
-      resolve({err: null, course: courses});
+      resolve({err: null, courses: courses});
     }
     catch (e) {
       reject(e);
@@ -52,7 +52,7 @@ function getCourseByQueryObject (queryObject = {}, flat = false) {
         where: queryObject,
         raw: flat
       });
-      resolve({err: null, course: courses});
+      resolve({err: null, courses: courses});
     }
     catch (e) {
       reject(e);
@@ -67,8 +67,8 @@ function createCourse (courseData) {
       if (!course) {
         return resolve({err: 'Invalid course Data'});
       }
-      const courseData = await getCourseById(course.id);
-      resolve({err: null, course: courseData.course});
+      const courseD = await getCourseById(course.id);
+      resolve({err: null, course: courseD.course});
     }
     catch (e) {
       reject(e);
@@ -79,14 +79,14 @@ function createCourse (courseData) {
 function updateCourse (id, courseData) {
   return new Promise(async(resolve, reject) => {
     try {
-      const updateCourse = await Db.Course.update({
+      const updateCourse = await Db.Course.update(courseData, {
         where: {id: id}, returning: true, individualHooks: true
       });
       if (!updateCourse[1][0]) {
         return resolve({err: 'Invalid Course Id'});
       }
-      const coursData = await getCourseById(updateCourse[1][0].id);
-      resolve({err: null, course: courseData.course});
+      const courseD = await getCourseById(updateCourse[1][0].id);
+      resolve({err: null, course: courseD.course});
     }
     catch (e) {
       reject(e);
@@ -113,6 +113,7 @@ function deleteCourse (id) {
 
 module.exports = {
   getCourse: getCourse,
+  createCourse: createCourse,
   getOneCourseByQueryObject: getOneCourseByQueryObject,
   getCourseById: getCourseById,
   getCourseByQueryObject: getCourseByQueryObject,
