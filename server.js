@@ -5,8 +5,8 @@ const bodyParser = require('body-parser');
 const PORT = process.env.PORT || 5000;
 const Db = require('./models');
 const apiRoutes = require('./src/routes/');
-const morgan = require('morgan');
 const logger = require('morgan');
+const morgan = require('morgan');
 const cors = require('cors');
 const ErrorMiddleware = require('./src/middlewares/error-handler/error.middleware');
 const SuccessMiddleware = require('./src/middlewares/success-handler/success.middleware');
@@ -15,8 +15,8 @@ const TokenMiddleware = require('./src/middlewares/token/token.middleware');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded());
+app.use(morgan());
 app.use(logger('dev'));
-app.use(morgan('combined'));
 app.use(cors());
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");

@@ -49,14 +49,15 @@ function getOneProgramSopiByQueryObject (queryObject, flat=false) {
   });
 }
 
-function createProgramSopi (programSopiData) {
+function createProgramSopi (programSopiData, flat = false) {
   return new Promise(async(resolve, reject) => {
     try {
       const newProgramSopi = await Db.ProgramSopi.create(programSopiData);
       if (!newProgramSopi) {
         return resolve({err: 'Invalid Program Sopi Data'});
       }
-      const getPS = await getProgramSopiById(newProgramSopi.id);
+      const getPS = await getProgramSopiById(newProgramSopi.id, flat);
+      if (getPS.err) { return resolve({err: getPS.err}); }
       resolve({err: null, programSopi: getPS.programSopi});
     }
     catch (e) {
@@ -65,7 +66,7 @@ function createProgramSopi (programSopiData) {
   });
 }
 
-function updateProgramSopi (findObject, programSopiData) {
+function updateProgramSopi (findObject, programSopiData, flat = false) {
   return new Promise(async(resolve, reject) => {
     try {
       if (!findObject || findObject == {}) {
@@ -78,11 +79,11 @@ function updateProgramSopi (findObject, programSopiData) {
         return resolve({err: 'Invalid ProgramSopi Data or findObject'});
       }
       if (updateProgramSopi[1].length === 1) {
-        const getPS = await getProgramSopiById(updateProgramSopi[1][0].id);
-        resolve({err: null, programSopi: getPS.programSopi});
+        const getPS = await getProgramSopiById(updateProgramSopi[1][0].id, flat);
+        return resolve({err: null, programSopi: getPS.programSopi});
       }
       const programSopis = await Promise.all(updateProgramSopi[1].map(async(d) => {
-        const getPS = await getProgramSopiById(d.id);
+        const getPS = await getProgramSopiById(d.id, flat);
         return getPS.programSopi;
       }));
       resolve({err: null, programSopis: programSopis});
@@ -91,6 +92,84 @@ function updateProgramSopi (findObject, programSopiData) {
       reject(e);
     }
   });
+}
+
+function createProgramSopiFromInput ({ProgramId, So, code, description}, flat = false) {
+  return new Promise(async(resolve, reject) => {
+    try {
+      let soData, sopiData, programSopiData;
+      const findSo = await SopiHelper.getSoByCode(So);
+      if (findSo.err) { return resolve({err: findSo.err}); }
+      if (!findSo.so) {
+        const createSo = await SopiHelper.createSo({code: So});
+        if (createSo.err) { return resolve({err: createSo.err}); }
+        soData = createSo.so;
+      } else {
+        soData = findSo.so;
+      }
+      const findSopi = await SopiHelper.getOneSopiByQueryObject({code: code});
+      if (findSopi.err) { return resolve({err: findSopi.err}); }
+      if (findSopi.sopi) {
+        sopiData = findSopi.sopi;
+      } else {
+        const createSopi = await SopiHelper.createSopi({code: code, SoId: soData.id});
+        if (createSopi.err) { return resolve({err: createSopi.err}) }
+        sopiData = createSopi.sopi;
+      }
+      const findPS = await getOneProgramSopiByQueryObject({ProgramId: ProgramId, SopiId: sopiData.id}, flat);
+      if (findPS.err) { return resolve({err: findPS.err}) }
+      if (!findPS.programSopi) {
+        if (!sopiData.id) {
+          return resolve({err: 'no sopi ID'});
+        }
+        const createPS = await createProgramSopi({ProgramId: ProgramId, SopiId: sopiData.id, description}, flat);
+        if (createPS.err) { return resolve({err: createPS.err}); }
+        programSopiData = createPS.programSopi;
+      } else {
+        programSopiData = findPS.programSopi;
+      }
+      if (!programSopiData) { return resolve({err: 'Invalid Inputs'}); }
+      resolve({err: null, programSopi: programSopiData});
+    }
+    catch (e) {
+      reject(e);
+    }
+  });
+}
+
+function updateProgramSopiFromInput (id, {So, code, description}, flat = false) {
+  return new Promise(async(resolve, reject) => {
+    try {
+      const findSo = await SopiHelper.getSoByCode(So);
+      let soData;
+      if (findSo.err) { return resolve({err: findSo.err}); }
+      if (findSo.so) {
+        soData = findSo.so;
+      } else {
+        const createSo = await SopiHelper.createSo({code: So});
+        if (createSo.err) { return resolve({err: createSo.err}); }
+        soData = createSo.so;
+      }
+      const findSopi = await SopiHelper.getOneSopiByQueryObject({code: code, SoId: soData.id});
+      let sopiData;
+      if (findSopi.err) { return resolve({err: findSopi.err}); }
+      if (findSopi.sopi) {
+        sopiData = findSopi.sopi;
+      } else {
+        const createSopi = await SopiHelper.createSopi({code: code, SoId: soData.id});
+        if (createSopi.err) { return resolve({err: createSopi.err}); }
+        sopiData = createSopi.sopi;
+      }
+      const programSopiData = {SopiId: sopiData.id, description: description};
+      const updatePS = await updateProgramSopi({id: id}, programSopiData, flat);
+      if (updatePS.err) { return resolve({err: updatePS.err}); }
+      if (!updatePS.programSopi) { return resolve({err: 'Invalid Inputs'}); }
+      resolve({err: null, programSopi: updatePS.programSopi});
+    }
+    catch (e) {
+      next(ErrorHelper.serverError(e));
+    }
+  })
 }
 
 function deleteProgramSopi (id) {
@@ -108,45 +187,21 @@ function deleteProgramSopi (id) {
   });
 }
 
-function bulkCreateProgramSopi (dataArray, ProgramId) {
+function bulkCreateProgramSopi (dataArray, ProgramId, flat = false) {
   return new Promise(async(resolve, reject) => {
     try {
       let success = [], error = [];
       const processData = await Promise.all(dataArray.map(async(d) => {
-        const { so, code, description } = d;
-        let soData, sopiData, programSopiData;
-        const findSo = await SopiHelper.getSoByCode(so);
-        if (findSo.err) { return error.push(findSo.err); }
-        if (findSo.so) {
-          soData = findSo.so;
-        } else {
-          createSo = await SopiHelper.createSo({code: so});
-          if (createSo.err) { return error.push(createSo.err); }
-          soData = createSo.so;
-        }
-        const findSopi = await SopiHelper.getOneSopiByQueryObject({code: code});
-        if (findSopi.err) { return error.push(findSopi.err); }
-        if (findSopi.sopi) {
-          sopiData = findSopi.sopi;
-        } else {
-          createSopi = await SopiHelper.createSopi({code: code, SoId: soData.id});
-          if (createSopi.err) { return error.push(createSopi.err); }
-          sopiData = createSopi.sopi;
-        }
-        const findProgramSopi = await getOneProgramSopiByQueryObject({SopiId: sopiData.id, ProgramId: ProgramId});
-        if (findProgramSopi.err) { return error.push(findProgramSopi.err); }
-        if (findProgramSopi.programSopi) {
-          programSopiData = findProgramSopi.programSopi;
-        } else {
-          const createProgramSopi = await createProgramSopi({SopiId: sopiData.id, ProgramId: ProgramId, description: description});
-          if (createProgramSopi.err) { return error.push(createProgramSopi.err); }
-          programSopiData = findProgramSopi.programSopi;
-        }
-        success.push(programSopiData);
+        const { So, code, description } = d;
+        const createPS = await createProgramSopiFromInput({ProgramId, So, code, description}, flat);
+        if (createPS.err) { error.push(createPS.err); }
+        if (!createPS.programSopi) { error.push('Invalid input'); }
+        success.push(createPS.programSopi);
       }));
       resolve({success: success, error: error});
     }
     catch (e) {
+      console.log(e);
       reject(e);
     }
   });
@@ -159,5 +214,7 @@ module.exports = {
   updateProgramSopi: updateProgramSopi,
   deleteProgramSopi: deleteProgramSopi,
   getOneProgramSopiByQueryObject: getOneProgramSopiByQueryObject,
-  bulkCreateProgramSopi: bulkCreateProgramSopi  
+  bulkCreateProgramSopi: bulkCreateProgramSopi,
+  createProgramSopiFromInput: createProgramSopiFromInput,
+  updateProgramSopiFromInput: updateProgramSopiFromInput
 };

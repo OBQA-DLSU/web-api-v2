@@ -8,14 +8,21 @@ const getQuerySchema = {
 };
 
 const sopiBodySchema = {
+  query: {
+    flat: Joi.boolean()
+  },
   body: {
-    so: Joi.string().min(1).max(1).required(),
+    id: Joi.number(),
+    So: Joi.string().min(1).max(1).required(),
     code: Joi.string().min(2).max(2).required(),
     description: Joi.string()
   }
 };
 
 const sopiBulkSchema = {
+  query: {
+    flat: Joi.boolean()
+  },
   body: {
     dataArray: Joi.array()
   }

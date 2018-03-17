@@ -25,7 +25,7 @@ SopiRoute.route('/program/:ProgramId')
   Sopi.createProgramSopi
 );
 
-SopiRoute.route('programSopi/:id')
+SopiRoute.route('/programSopi/:id')
 .get(
   /* RequireAuth, */
   ExpressJoi(SopiValidation.getQuerySchema),
@@ -41,7 +41,7 @@ SopiRoute.route('programSopi/:id')
   Sopi.deleteProgramSopi
 );
 
-SopiRoute.route('bulk/:ProgramId')
+SopiRoute.route('/bulk/:ProgramId')
 .post(
   /* RequireAuth, */
   ExpressJoi(SopiValidation.sopiBulkSchema),
